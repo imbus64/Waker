@@ -63,6 +63,13 @@ impl MagicPacket {
         return Ok(MagicPacket::new(&MagicPacket::parse(mac_str).unwrap()));
     }
 
+    // Stolen 
+    fn mac_to_byte(data: &str, sep: char) -> Vec<u8> {
+        data.split(sep)
+            .flat_map(|x| hex::decode(x).expect("Invalid mac!"))
+            .collect()
+    }
+
     // Parses string by position if string is 12+5 characters long (delimited by : for example)
     pub fn parse<S: AsRef<str>>(mac_str: S) -> Result<Box<[u8; 6]>, Box<dyn Error>> {
         use hex::FromHex;

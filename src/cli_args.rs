@@ -1,3 +1,6 @@
+// use std::{path::PathBuf, str::FromStr};
+
+use crate::{BackupMode, RunMode, WakeMode};
 use clap::{App, Arg, ArgMatches};
 
 // use crate::main::RunMode;
@@ -11,6 +14,32 @@ use clap::{App, Arg, ArgMatches};
 // waker -e, --edit                 // Enters interactive editing mode
 // waker --backup-config [file]     // Prints to stdout unless file is specified
 
+// This is essentially and abstraction of clap
+/// Parses command line arguments and returns a RunMode enum containing desired run mode.
+pub fn get_runmode() -> RunMode {
+    let matches = get_cli_matches();
+    if matches.is_present("add") {
+        return RunMode::Add;
+    }
+    if matches.is_present("all") {
+        return RunMode::Wake(WakeMode::WakeAll);
+    }
+    if matches.is_present("edit") {
+        return RunMode::Edit;
+    }
+    if matches.is_present("list") {
+        return RunMode::List;
+    }
+    if matches.is_present("backup") {
+        let path_str = matches.value_of("backup").unwrap();
+        return RunMode::Backup(BackupMode::ToFile(path_str.to_string()));
+    }
+    if matches.is_present("print_config") {
+        return RunMode::Backup(BackupMode::ToStdout);
+    }
+    return RunMode::Wake(WakeMode::WakeSome);
+}
+
 pub fn get_cli_matches() -> ArgMatches<'static> {
     /* Move this out to a function that returns a config struct with all the
      * options */
@@ -21,29 +50,48 @@ pub fn get_cli_matches() -> ArgMatches<'static> {
         .author("Imbus64")
         .about("Utility for sending magic packets to configured machines.")
         .arg(
-            Arg::with_name("all")
+            Arg::with_name("add")
                 .short("a")
+                .long("add")
+                .help("Add a new host"),
+        )
+        .arg(
+            Arg::with_name("all")
                 .long("all")
                 .help("Wake all configured hosts"),
+        )
+        .arg(
+            Arg::with_name("edit")
+                .short("e")
+                .long("edit")
+                .help("Enter edit mode"),
         )
         .arg(
             Arg::with_name("list")
                 .short("l")
                 .long("list")
-                .conflicts_with("weight")
-                .help("Print all entries"),
+                .help("List all configured entries"),
         )
         .arg(
-            Arg::with_name("raw")
-                .long("raw")
-                .conflicts_with_all(&["list", "plain"])
-                .help("Print raw log file to stdout"),
+            Arg::with_name("backup")
+                .long("backup")
+                .conflicts_with_all(&["list", "all"])
+                .help("Backup configuration file")
+                .value_name("File"),
         )
         .arg(
-            Arg::with_name("plain")
-                .long("plain")
-                .conflicts_with_all(&["list", "raw"])
-                .help("Print all entries without pretty table formatting"),
+            Arg::with_name("print_config")
+                .long("print-config")
+                .short("p")
+                .conflicts_with_all(&["list", "all"])
+                .help("Print contents of configuration file to stdout"),
         )
+        .arg(
+            Arg::with_name("MAC ADDRESSES")
+                .conflicts_with_all(&["all", "list", "edit", "backup"])
+                .multiple(true),
+        )
+        // .short("MAC to be directly woken")
+        // .long("asdf")
         .get_matches();
 }

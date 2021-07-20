@@ -1,6 +1,17 @@
 TODO: Review parsing methods
+Add confirm for wake all
 
 Hosts should be pinged on listing
+
+Structs defined:
+    Host
+        - Implement methods to retrieve as macbytes/ipv4addr
+        - Field containing MagicPacket?
+    Machines
+        - WakeAll method
+        - PingAll method
+    MagicPacket
+        - Finalze parsers
 
 The format of a Wake-on-LAN (WOL) magic packet is defined 
 as a byte array with 6 bytes of value 255 (0xFF) and 
