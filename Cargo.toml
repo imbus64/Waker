@@ -11,5 +11,5 @@ serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 dirs = "*"
 clap = "*"
-eff-wordlist = "*"
-rand = "*"
+# eff-wordlist = "*"
+# rand = "*"

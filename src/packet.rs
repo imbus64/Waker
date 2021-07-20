@@ -1,7 +1,5 @@
-use std::{
-    error::Error,
-    net::{Ipv4Addr, ToSocketAddrs, UdpSocket},
-};
+use std::{convert::TryInto, error::Error, net::{Ipv4Addr, ToSocketAddrs, UdpSocket}};
+use crate::sanitizers::{self, sanitize};
 
 // The format of a Wake-on-LAN (WOL) magic packet is defined
 // as a byte array with 6 bytes of value 255 (0xFF) followed by
@@ -34,73 +32,22 @@ impl MagicPacket {
         return MagicPacket { bytes: magic_bytes };
     }
 
-    // This is horrible code
     /// Parse a MAC-string into a packet.
-    /// Takes both separated and unseparated
+    /// The MAC-string should be 17 characters long, separated by colons (i.e. XX:XX:XX:XX:XX:XX)
     pub fn from_str(mac_str: &str) -> Result<MagicPacket, Box<dyn Error>> {
-        use hex::FromHex;
-        let mut mac_string = mac_str.trim().to_string();
-
-        if mac_string.len() == 17 {
-            for i in 0..5 {
-                mac_string.remove(14 - (i * 3)); // Deal with it
-            }
-        }
-
-        let mut mac_arr: [u8; 6];
-        let hex_vec = Vec::from_hex(mac_string)?;
-
-        unsafe {
-            mac_arr = std::mem::MaybeUninit::uninit().assume_init();
-            let src: *const u8 = &hex_vec[0];
-            let dst: *mut u8 = &mut mac_arr[0];
-            dst.copy_from_nonoverlapping(src, 6);
-        }
-        return Ok(MagicPacket::new(&mac_arr));
+        let mac_bytes = MagicPacket::parse_macstr(mac_str, ':')?;
+        return Ok(MagicPacket::new(&mac_bytes));
     }
 
-    pub fn from_str2(mac_str: &str) -> Result<MagicPacket, Box<dyn Error>> {
-        return Ok(MagicPacket::new(&MagicPacket::parse(mac_str).unwrap()));
-    }
-
-    // Stolen 
-    fn mac_to_byte(data: &str, sep: char) -> Vec<u8> {
-        data.split(sep)
+    // This method is a bit allocation heavy.
+    pub fn parse_macstr<S: AsRef<str>>(mac_str: S, sep: char) -> Result<Box<[u8; 6]>, Box<dyn Error>> {
+        let sanitized_macstr = sanitize(mac_str.as_ref(), sanitizers::AddrType::MAC).unwrap();
+        let bytes_split: Vec<u8> = sanitized_macstr.split(sep)
             .flat_map(|x| hex::decode(x).expect("Invalid mac!"))
-            .collect()
-    }
-
-    // Parses string by position if string is 12+5 characters long (delimited by : for example)
-    pub fn parse<S: AsRef<str>>(mac_str: S) -> Result<Box<[u8; 6]>, Box<dyn Error>> {
-        use hex::FromHex;
-        let mut mstr: &str = mac_str.as_ref();
-        mstr = mstr.trim();
-        let mut bytes: [u8; 6] = [0, 0, 0, 0, 0, 0];
-
-        for (index, byte) in bytes.iter_mut().enumerate() {
-            // 0,3,6,9...
-            let substr = &mstr[3 * index..3 * index + 2];
-            *byte = <[u8; 1]>::from_hex(substr).unwrap()[0];
-        }
-
-        return Ok(Box::new(bytes));
-    }
-
-    // Loops the string and parses any valid hex
-    pub fn parse_harder<S: Into<String>>(mac_str: S) -> Result<Box<[u8; 6]>, Box<dyn Error>> {
-        let mstr: String = mac_str.into();
-        let mut hexdigits: String = mstr
-            .chars()
-            .filter(|c| char::is_ascii_hexdigit(c))
             .collect();
-        let mut bytes: [u8; 6] = [0; 6];
 
-        if hexdigits.len() >= 12 {
-            hexdigits.truncate(12); // May not be needed, since bytes is only 6 bytes, and from_hex might be smart enough to realize...
-                                    //let bytes: [u8; 6] = hex::FromHex::from_hex(hexdigits)?;
-            bytes = hex::FromHex::from_hex(hexdigits)?;
-        }
-        return Ok(Box::new(bytes));
+        let arr: [u8; 6] = bytes_split.try_into().unwrap();
+        Ok(Box::new(arr))
     }
 
     /// Send packet to/from specific address/interface
@@ -117,11 +64,6 @@ impl MagicPacket {
             (Ipv4Addr::new(0xFF, 0xFF, 0xFF, 0xFF), 9),
             (Ipv4Addr::new(0x0, 0x0, 0x0, 0x0), 0),
         )
-    }
-
-    /// Return raw bytes, ready to be broadcasted
-    pub fn get_bytes(&self) -> &[u8; 102] {
-        &self.bytes
     }
 }
 
@@ -142,7 +84,7 @@ mod tests {
 
     #[test]
     fn magic_packet_from_new() {
-        let packet3 = MagicPacket::from_str2("10:10:10:10:10:10").unwrap();
+        let packet3 = MagicPacket::from_str("10:10:10:10:10:10").unwrap();
         //let vec: [u8; 102] = [0xFF; 102];
         let slice = &packet3.bytes[packet3.bytes.len() - 6..];
         for a in slice {
@@ -155,15 +97,9 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let mp = MagicPacket::parse("ff:ff:ff:ff:ff:ff").unwrap();
+        let mp = MagicPacket::parse_macstr("ff:ff:ff:ff:ff:ff", ':').unwrap();
         assert_eq!([0xFF; 6], *mp);
-        let mp2 = MagicPacket::parse("10:10:10:10:10:10").unwrap();
+        let mp2 = MagicPacket::parse_macstr("10:10:10:10:10:10", ':').unwrap();
         assert_eq!([0x10; 6], *mp2);
-    }
-
-    #[test]
-    fn parse_harder_test() {
-        let mac = MagicPacket::parse_harder("10:10:10:10:10:10").unwrap();
-        assert_eq!([0x10; 6], *mac);
     }
 }

@@ -16,7 +16,6 @@ mod host; // The actual Host struct
 mod input; // Gives us a python-like input function, as well as a simple confirm function
 mod machines; // Struct that holds a vec of Hosts, as well as operations on those
 mod packet; // The actual magic packet struct, with wake methods e.t.c.
-// mod random_machine; // Exposes a function that generates a random Host, with random mac, ip and name // The actual host struct.
 mod sanitizers; // Functions that sanitizes MAC and IP addresses
 
 // use crate::packet::*;
@@ -76,20 +75,17 @@ fn prompt_file_creation(config_path: &PathBuf) -> Option<File> {
         config_path.to_str().unwrap()
     );
     if input::confirm(&msg) {
+
         let newfile = std::fs::File::create(&config_path).expect(&format!(
             "Could not create file: {}",
             config_path.to_str().unwrap()
         ));
 
         // Deserialize an empty Machines struct into the new config file.
-        // The parser is not equipped to handle empty or malformatted files...
-        // This could potentially be moved into a static method in Machines, like
-        // Machines::init_config_file(), which does this for us.
-        //
-        // For now, this will do.
-        let skeleton_machines = Machines::new();
-        skeleton_machines.dump(&config_path).unwrap();
-        return Some(newfile);
+        match Machines::create_skeleton_config(config_path) {
+            Ok(()) => { return Some(newfile); }
+            Err(_) => return None,
+        }
     } else {
         return None;
     }
@@ -169,7 +165,7 @@ fn edit_host(host: &mut Host, editmode: HostEditMode) {
                                     let newip = input("New IP: ");
                                     match sanitizers::sanitize(&newip, sanitizers::AddrType::IPv4) {
                                         Some(ip) => {
-                                            host.ips[index as usize] = newip;
+                                            host.ips[index as usize] = ip;
                                         }
                                         None => {
                                             println!("Could not parse IP");
@@ -226,7 +222,7 @@ fn edit_host(host: &mut Host, editmode: HostEditMode) {
                                     let newmac = input("New MAC: ");
                                     match sanitizers::sanitize(&newmac, sanitizers::AddrType::MAC) {
                                         Some(mac_addr) => {
-                                            host.macs[index as usize] = newmac;
+                                            host.macs[index as usize] = mac_addr;
                                         }
                                         None => {
                                             println!("Could not parse MAC");
@@ -345,8 +341,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let file = prompt_file_creation(&config_path);
         if file.is_none() {
             println!("Exiting...");
-            return Ok(());
         }
+        else {
+            println!("Config file created.");
+        }
+        return Ok(());
     }
 
     // TODO: More sophisticated error checking and logging
@@ -362,22 +361,29 @@ fn main() -> Result<(), Box<dyn Error>> {
         RunMode::Wake(wake_mode) => {
             match wake_mode {
                 WakeMode::WakeAll => {
-                    machines.wakeall();
-                    for host in &machines.list {
-                        println!("Woke {}", host.name)
+                    if confirm("You are about to wake all configured machines.\nContinue?") {
+                        machines.wakeall();
+                        for host in &machines.list {
+                            println!("Woke {}", host.name)
+                        }
                     }
                 }
                 WakeMode::WakeSome => {
-                    println!("{}", machines);
-                    let indexes = which_indexes(
-                        "Select which hosts to wake up (Comma separated integers): ",
-                        &machines,
-                    );
-                    for index in indexes {
-                        // TODO: Bounds checking
-                        let host = &machines.list[index as usize];
-                        host.wake();
-                        println!("Woke {}", host.name)
+                    if ! machines.list.is_empty() {
+                        println!("{}", machines);
+                        let indexes = which_indexes(
+                            "Select which hosts to wake up (Comma separated integers): ",
+                            &machines,
+                        );
+                        for index in indexes {
+                            // TODO: Bounds checking
+                            let host = &machines.list[index as usize];
+                            host.wake();
+                            println!("Woke {}", host.name)
+                        }
+                    }
+                    else {
+                        println!("No machines configured yet... Try \"waker --help\" for information about usage");
                     }
                 }
                 _ => println!("undefined"),

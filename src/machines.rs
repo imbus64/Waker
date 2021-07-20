@@ -56,7 +56,9 @@ impl Machines {
         Ok(machines)
     }
 
-    fn create_skeleton_config(file: &PathBuf) -> Result<(), Box<dyn Error>> {
+    /// Creates file and dumps a skeleton config into it
+    pub fn create_skeleton_config(file: &PathBuf) -> Result<(), Box<dyn Error>> {
+        std::fs::File::create(&file)?;
         let skel_machines = Machines::new();
         skel_machines.dump(file)?;
         return Ok(());

@@ -1,61 +1,36 @@
-TODO: Review parsing methods
-Add confirm for wake all
+# Waker
+**An intelligent wake on lan utility to keep track of your machines**
 
-Hosts should be pinged on listing
+The output from program help flag should provide a clear idea of its use:
+```
+Waker 0.1.0
+Imbus64
+Utility for sending magic packets to configured machines.
 
-Structs defined:
-    Host
-        - Implement methods to retrieve as macbytes/ipv4addr
-        - Field containing MagicPacket?
-    Machines
-        - WakeAll method
-        - PingAll method
-    MagicPacket
-        - Finalze parsers
+USAGE:
+    waker [FLAGS] [OPTIONS] [MAC ADDRESSES]...
 
-The format of a Wake-on-LAN (WOL) magic packet is defined 
-as a byte array with 6 bytes of value 255 (0xFF) and 
-16 repetitions of the target machine’s 48-bit (6-byte) MAC address.
+FLAGS:
+    -a, --add             Add a new host
+        --all             Wake all configured hosts
+    -e, --edit            Enter edit mode
+    -h, --help            Prints help information
+    -l, --list            List all configured entries
+    -p, --print-config    Print contents of configuration file to stdout
+    -V, --version         Prints version information
 
-102 bytes
+OPTIONS:
+        --backup <File>    Backup configuration file
 
-several macs per name
+ARGS:
+    <MAC ADDRESSES>...    
 
-edit, delete, add
+```
+This project is currently in beta. Many features are implemented, but some may not work as expected.
 
-wakemode::all
-
-wake(bytes) method
-async ping method(ip)?
-
-const MAGIC_BYTES_HEADER: [u8; 6] = [0xFF; 6];
-vec<u8> bytes = FFFFFFFFFFFF .reserve(enough) 102?
-
-match run_mode {
-    Some() => Do according to some
-    None => Figure out what to do(set run_mode)
-}
-
-add 8 char string -> to bytes ask for name and add
-add 11 char string -> if mac[2,5,8] is same char -> split by it and ask for name -> add
-
-store json in ~/.config/waker.conf
-dump-json method
-export/import? append?
-
-struct mechine {
-    vec of all macs
-    ip of machine? so we can ping it?
-    name
-}
-
-struct mac_list {
-    Vec
-}
-
-
-ask what do:
-    1. Wake
-    2. Wake all
-    3. Add
-    4. Edit
+## Future plans:
+- Further testing and polish in general.
+- [ ] Include pinging functionality, so the user gets feedback on what machines are already awake (Top priority)
+- [ ] Enable users to import an existing config, appending selected hosts to current config. (Second priority)
+- [ ] Perhaps wrap run_mode in an Option, with None being the default when the program is invoked without CLI parameters
+- [ ] Rewrite all input/blocking related code into a struct of some sort
