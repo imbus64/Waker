@@ -40,7 +40,7 @@ pub fn get_runmode() -> RunMode {
     return RunMode::Wake(WakeMode::WakeSome);
 }
 
-pub fn get_cli_matches() -> ArgMatches<'static> {
+pub fn get_cli_matches() -> ArgMatches {
     /* Move this out to a function that returns a config struct with all the
      * options */
     /* or just return the ArgMatches object for clarity */
@@ -50,46 +50,46 @@ pub fn get_cli_matches() -> ArgMatches<'static> {
         .author("Imbus64")
         .about("Utility for sending magic packets to configured machines.")
         .arg(
-            Arg::with_name("add")
-                .short("a")
+            Arg::new("add")
+                .short('a')
                 .long("add")
                 .help("Add a new host"),
         )
         .arg(
-            Arg::with_name("all")
+            Arg::new("all")
                 .long("all")
                 .help("Wake all configured hosts"),
         )
         .arg(
-            Arg::with_name("edit")
-                .short("e")
+            Arg::new("edit")
+                .short('e')
                 .long("edit")
                 .help("Enter edit mode"),
         )
         .arg(
-            Arg::with_name("list")
-                .short("l")
+            Arg::new("list")
+                .short('l')
                 .long("list")
                 .help("List all configured entries"),
         )
         .arg(
-            Arg::with_name("backup")
+            Arg::new("backup")
                 .long("backup")
                 .conflicts_with_all(&["list", "all"])
                 .help("Backup configuration file")
                 .value_name("File"),
         )
         .arg(
-            Arg::with_name("print_config")
+            Arg::new("print_config")
                 .long("print-config")
-                .short("p")
+                .short('p')
                 .conflicts_with_all(&["list", "all"])
                 .help("Print contents of configuration file to stdout"),
         )
         .arg(
-            Arg::with_name("MAC ADDRESSES")
+            Arg::new("MAC ADDRESSES")
                 .conflicts_with_all(&["all", "list", "edit", "backup"])
-                .multiple(true),
+                .multiple_occurrences(true),
         )
         // .short("MAC to be directly woken")
         // .long("asdf")
